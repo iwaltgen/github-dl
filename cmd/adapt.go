@@ -9,7 +9,7 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type colorPrint func(format string, a ...interface{})
 
-// Color Print function
+// Color Print type
 var (
 	Black   = color.Black
 	Red     = color.Red

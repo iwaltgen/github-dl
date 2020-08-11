@@ -32,8 +32,8 @@ var listCmd = &cobra.Command{
 	Long: `Fetch github repository release list.
 
 Example:
-λ> github-dl list iwaltgen/github-dl
-λ> github-dl list iwaltgen/github-dl --page 1 --per-page 10`,
+github-dl --repo iwaltgen/github-dl list
+github-dl --repo iwaltgen/github-dl list --page 1 --per-page 10`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
 		client := github.NewClient(githubToken())

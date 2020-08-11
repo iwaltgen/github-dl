@@ -20,21 +20,7 @@ import (
 	"fmt"
 	"strconv"
 	"time"
-
-	"github.com/spf13/cobra"
 )
-
-// versionCmd represents the version command
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Show github-dl version",
-	Long:  `Show github-dl version.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("version: %s\n", version)
-		fmt.Printf("commit: %s\n", commitHash)
-		fmt.Printf("build: %s\n", buildTime().Format(time.RFC3339))
-	},
-}
 
 var (
 	version    = "dev"
@@ -61,8 +47,4 @@ func unixStringToTime(unixStr string) (t time.Time, err error) {
 		return t, fmt.Errorf("parse unix timestamp string: %w", err)
 	}
 	return time.Unix(i, 0).UTC(), nil
-}
-
-func init() {
-	rootCmd.AddCommand(versionCmd)
 }

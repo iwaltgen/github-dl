@@ -23,10 +23,10 @@ import (
 	ggithub "github.com/google/go-github/github"
 )
 
-// Repository is github repository(owner/name)
+// Repository is github repository. (owner/name)
 type Repository string
 
-// Owner is repository owner part
+// Owner is a repository owner part.
 func (r Repository) Owner() string {
 	parts := strings.Split(string(r), "/")
 	if len(parts) == 2 {
@@ -35,7 +35,7 @@ func (r Repository) Owner() string {
 	return ""
 }
 
-// Name is repository name part
+// Name is a repository name part.
 func (r Repository) Name() string {
 	parts := strings.Split(string(r), "/")
 	if len(parts) == 2 {
@@ -57,3 +57,6 @@ type ListOptions = ggithub.ListOptions
 
 // RepositoryRelease represents a GitHub release in a repository.
 type RepositoryRelease = ggithub.RepositoryRelease
+
+// ReleaseAsset represents a GitHub release asset in a repository.
+type ReleaseAsset = ggithub.ReleaseAsset

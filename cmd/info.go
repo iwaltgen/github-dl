@@ -18,7 +18,6 @@ package cmd
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -29,28 +28,24 @@ import (
 // infoCmd represents the info command
 var infoCmd = &cobra.Command{
 	Use:   "info",
-	Short: "Show github repository release.",
-	Long: `Show github repository release.
+	Short: "Show github repository release info.",
+	Long: `Show github repository release info.
 
 Example:
-λ> github-dl info iwaltgen/github-dl
-λ> github-dl info iwaltgen/github-dl --id 1`,
+github-dl --repo iwaltgen/github-dl info
+github-dl --repo iwaltgen/github-dl info --tag v0.1.0`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
 		client := github.NewClient(githubToken())
 
-		resp, err := client.GetRelease(ctx, github.Repository(repo), releaseID)
+		resp, err := client.GetRelease(ctx, github.Repository(repo), tag)
 		if err != nil {
 			return err
 		}
 
 		if verbose {
-			relID := "latest"
-			if releaseID != 0 {
-				relID = strconv.FormatInt(releaseID, 10)
-			}
 			color.Cyan("repository:\t%s", repo)
-			color.Cyan("release:\t%s", relID)
+			color.Cyan("release:\t%s", tag)
 		}
 
 		return printPrettyJSON(Cyan, resp)
@@ -58,12 +53,12 @@ Example:
 }
 
 var (
-	releaseID int64
+	tag = "latest"
 )
 
 func init() {
 	rootCmd.AddCommand(infoCmd)
 
 	flagSet := infoCmd.Flags()
-	flagSet.Int64Var(&releaseID, "id", 0, "repository release id")
+	flagSet.StringVar(&tag, "tag", tag, "release tag")
 }

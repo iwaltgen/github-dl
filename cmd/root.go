@@ -23,23 +23,68 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"runtime"
+	"time"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+
+	"github.com/iwaltgen/github-dl/pkg/github"
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "github-dl",
-	Short: "Download github repository release assets.",
-	Long: `Download github repository release assets.
+	Short: "Download a github repository release asset.",
+	Long: fmt.Sprintf(`Download a github repository release asset.
 
-Example: TBD
-λ> github-dl iwaltgen/github-dl`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("root called")
-		fmt.Println(githubToken())
+version: %s
+commit: %s
+build: %s
+
+Example:
+github-dl --repo iwaltgen/github-dl --asset github-dl
+github-dl --repo uber/prototool --asset prototool --target prototool
+github-dl --repo golangci/golangci-lint --asset golangci-lint --target golangci-lint --pick golangci-lint
+github-dl --repo google/protobuf --asset protoc --os osx --dest ./bin --target protoc --pick bin/protoc`,
+		version,
+		commitHash,
+		buildTime().Format(time.RFC3339),
+	),
+	SilenceErrors: true,
+	SilenceUsage:  true,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx := context.Background()
+		client := github.NewClient(githubToken())
+
+		if verbose {
+			color.Cyan("repository:\t%s", repo)
+			color.Cyan("release:\t%s", tag)
+		}
+
+		if asset == "" {
+			color.Magenta("require asset name: see flags --asset")
+			fmt.Println(cmd.UsageString())
+			os.Exit(1)
+		}
+
+		resp, err := client.DownloadReleaseAsset(ctx, github.Repository(repo), &github.AssetOptions{
+			Name:     asset,
+			Tag:      tag,
+			OS:       osname,
+			Arch:     arch,
+			DestPath: dest,
+			DestFile: target,
+			PickFile: pick,
+		})
+		if err != nil {
+			return err
+		}
+
+		return printPrettyJSON(Cyan, resp)
 	},
 }
 
@@ -50,12 +95,31 @@ var (
 	repo     string
 )
 
+var (
+	asset  string
+	osname string
+	arch   string
+	dest   string
+	target string
+	pick   string
+)
+
 func init() {
-	flagSet := rootCmd.PersistentFlags()
-	flagSet.BoolVarP(&verbose, "verbose", "v", verbose, "verbose output")
-	flagSet.StringVar(&tokenEnv, "token-env", "GITHUB_TOKEN", "github oauth2 token environment name")
-	flagSet.StringVar(&token, "token", "", "github oauth2 token value")
-	flagSet.StringVar(&repo, "repo", "", "github repository (owner/name)")
+	pflagSet := rootCmd.PersistentFlags()
+	pflagSet.BoolVarP(&verbose, "verbose", "v", verbose, "verbose output")
+	pflagSet.StringVar(&tokenEnv, "token-env", "GITHUB_TOKEN", "github oauth2 token environment name")
+	pflagSet.StringVar(&token, "token", token, "github oauth2 token value (optional)")
+	pflagSet.StringVar(&repo, "repo", repo, "github repository (owner/name)")
+
+	flagSet := rootCmd.Flags()
+	wd, _ := os.Getwd()
+	flagSet.StringVar(&tag, "tag", tag, "release tag")
+	flagSet.StringVar(&asset, "asset", asset, "asset name keyword")
+	flagSet.StringVar(&osname, "os", runtime.GOOS, "os keyword")
+	flagSet.StringVar(&arch, "arch", runtime.GOARCH, "arch keyword")
+	flagSet.StringVar(&dest, "dest", wd, "destination path")
+	flagSet.StringVar(&target, "target", target, "destination file (optional)")
+	flagSet.StringVar(&pick, "pick", pick, "extract archive and pick a file (optional)")
 }
 
 func githubToken() string {
@@ -69,7 +133,7 @@ func githubToken() string {
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		color.Magenta(err.Error())
 		os.Exit(1)
 	}
 }

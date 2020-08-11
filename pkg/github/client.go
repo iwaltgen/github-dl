@@ -18,17 +18,18 @@ package github
 
 import (
 	"context"
+	"fmt"
 
 	ggithub "github.com/google/go-github/github"
 	"golang.org/x/oauth2"
 )
 
-// Client is github oauth2 client
+// Client is a github oauth2 client.
 type Client struct {
 	client *ggithub.Client
 }
 
-// NewClient is create github client
+// NewClient creates github client.
 func NewClient(accessToken string) *Client {
 	ctx := context.Background()
 	tokenSource := oauth2.StaticTokenSource(
@@ -39,7 +40,7 @@ func NewClient(accessToken string) *Client {
 	}
 }
 
-// ListReleases is get release list
+// ListReleases get release list.
 func (c *Client) ListReleases(ctx context.Context,
 	repo Repository,
 	opt *ListOptions,
@@ -52,20 +53,53 @@ func (c *Client) ListReleases(ctx context.Context,
 	return releases, err
 }
 
-// GetRelease is get release info
+// GetRelease gets release info.
 func (c *Client) GetRelease(ctx context.Context,
 	repo Repository,
-	id int64,
+	tag string,
 ) (*RepositoryRelease, error) {
 	if err := repo.valid(); err != nil {
 		return nil, err
 	}
 
-	if id == 0 {
+	if tag == "latest" {
 		release, _, err := c.client.Repositories.GetLatestRelease(ctx, repo.Owner(), repo.Name())
 		return release, err
 	}
 
-	release, _, err := c.client.Repositories.GetRelease(ctx, repo.Owner(), repo.Name(), id)
+	release, _, err := c.client.Repositories.GetReleaseByTag(ctx, repo.Owner(), repo.Name(), tag)
 	return release, err
+}
+
+// DownloadReleaseAsset downloads a release asset file.
+func (c *Client) DownloadReleaseAsset(ctx context.Context,
+	repo Repository,
+	opt *AssetOptions,
+) (<-chan AssetProgress, error) {
+	if err := repo.valid(); err != nil {
+		return nil, err
+	}
+
+	release, err := c.GetRelease(ctx, repo, opt.Tag)
+	if err != nil {
+		return nil, err
+	}
+
+	asset := c.findReleaseAsset(release, opt)
+	if asset == nil {
+		return nil, fmt.Errorf("not found asset: [name: %s, os: %s, arch: %s]", opt.Name, opt.OS, opt.Arch)
+	}
+
+	// TODO(iwaltgen): download file
+	// https://golangcode.com/download-a-file-with-progress/
+	// https://github.com/mholt/archiver
+	return nil, nil
+}
+
+func (c *Client) findReleaseAsset(release *RepositoryRelease, opt *AssetOptions) *ReleaseAsset {
+	for _, asset := range release.Assets {
+		// TODO(iwaltgen): find asset match opt
+		_ = asset
+	}
+	return nil
 }
