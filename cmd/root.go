@@ -29,7 +29,9 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/cheggaaa/pb/v3"
 	"github.com/fatih/color"
+	"github.com/reactivex/rxgo/v2"
 	"github.com/spf13/cobra"
 
 	"github.com/iwaltgen/github-dl/pkg/github"
@@ -71,7 +73,7 @@ github-dl --repo google/protobuf --asset protoc --os osx --dest ./bin --target p
 			os.Exit(1)
 		}
 
-		resp, err := client.DownloadReleaseAsset(ctx, github.Repository(repo), &github.AssetOptions{
+		asset, observable, err := client.DownloadReleaseAsset(ctx, github.Repository(repo), &github.AssetOptions{
 			Name:     asset,
 			Tag:      tag,
 			OS:       osname,
@@ -84,7 +86,24 @@ github-dl --repo google/protobuf --asset protoc --os osx --dest ./bin --target p
 			return err
 		}
 
-		return printPrettyJSON(Cyan, resp)
+		totalSize := int64(*asset.Size)
+		pbbar := pb.Full.New(int(totalSize))
+		pbbar.Set(pb.Bytes, true)
+		pbbar.Set(pb.Terminal, true)
+
+		pbbar.Start()
+		for item := range observable.Observe(rxgo.WithContext(ctx)) {
+			if item.Error() {
+				return item.E
+			}
+
+			progress := item.V.(*github.DownloadProgress)
+			pbbar.SetCurrent(progress.Received)
+		}
+		pbbar.SetCurrent(totalSize)
+		pbbar.Finish()
+
+		return nil
 	},
 }
 

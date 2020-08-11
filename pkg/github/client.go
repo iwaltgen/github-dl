@@ -19,8 +19,15 @@ package github
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path"
+	"path/filepath"
+	"strings"
 
 	ggithub "github.com/google/go-github/github"
+	"github.com/reactivex/rxgo/v2"
 	"golang.org/x/oauth2"
 )
 
@@ -75,31 +82,72 @@ func (c *Client) GetRelease(ctx context.Context,
 func (c *Client) DownloadReleaseAsset(ctx context.Context,
 	repo Repository,
 	opt *AssetOptions,
-) (<-chan AssetProgress, error) {
+) (*ReleaseAsset, rxgo.Observable, error) {
 	if err := repo.valid(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	release, err := c.GetRelease(ctx, repo, opt.Tag)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	asset := c.findReleaseAsset(release, opt)
 	if asset == nil {
-		return nil, fmt.Errorf("not found asset: [name: %s, os: %s, arch: %s]", opt.Name, opt.OS, opt.Arch)
+		err := fmt.Errorf("not found asset: [name: %s, os: %s, arch: %s]", opt.Name, opt.OS, opt.Arch)
+		return nil, nil, err
 	}
 
-	// TODO(iwaltgen): download file
-	// https://golangcode.com/download-a-file-with-progress/
-	// https://github.com/mholt/archiver
-	return nil, nil
+	observable, err := c.downloadAsset(asset, opt)
+	return asset, observable, err
 }
 
 func (c *Client) findReleaseAsset(release *RepositoryRelease, opt *AssetOptions) *ReleaseAsset {
 	for _, asset := range release.Assets {
-		// TODO(iwaltgen): find asset match opt
-		_ = asset
+		name := strings.ToLower(*asset.Name)
+		matchedName := strings.Contains(name, opt.Name)
+		matchedOS := strings.Contains(name, opt.OS)
+		matchedArch := strings.Contains(name, opt.Arch)
+		if matchedName && matchedOS && matchedArch {
+			return &asset
+		}
 	}
 	return nil
+}
+
+func (c *Client) downloadAsset(asset *ReleaseAsset, opt *AssetOptions) (rxgo.Observable, error) {
+	url := *asset.BrowserDownloadURL
+	filename := path.Base(url)
+	filepath := filepath.Join(opt.DestPath, filename)
+	tempext := ".ghdownload"
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+
+	return rxgo.Defer([]rxgo.Producer{func(ctx context.Context, next chan<- rxgo.Item) {
+		defer resp.Body.Close()
+
+		file, err := os.Create(filepath + tempext)
+		if err != nil {
+			next <- rxgo.Error(err)
+			return
+		}
+		defer file.Close()
+
+		counter := NewWriteCounter(next, int64(*asset.Size))
+		if _, err = io.Copy(file, io.TeeReader(resp.Body, counter)); err != nil {
+			next <- rxgo.Error(err)
+			return
+		}
+
+		if err := os.Rename(filepath+tempext, filepath); err != nil {
+			next <- rxgo.Error(err)
+		}
+	}}), nil
+
+	// tempdir := os.TempDir()
+	// https://github.com/mholt/archiver
+	// return counter.Chan, nil
 }
