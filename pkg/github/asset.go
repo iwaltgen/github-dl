@@ -7,6 +7,6 @@ type AssetOptions struct {
 	OS       string
 	Arch     string
 	DestPath string
-	DestFile string
+	Target   string
 	PickFile string
 }

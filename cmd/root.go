@@ -79,7 +79,7 @@ github-dl --repo google/protobuf --asset protoc --os osx --dest ./bin --target p
 			OS:       osname,
 			Arch:     arch,
 			DestPath: dest,
-			DestFile: target,
+			Target:   target,
 			PickFile: pick,
 		})
 		if err != nil {

@@ -10,6 +10,7 @@ require (
 	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.10
 	github.com/magefile/mage v1.10.0
+	github.com/mholt/archiver/v3 v3.3.0
 	github.com/reactivex/rxgo/v2 v2.1.0
 	github.com/spf13/cobra v1.0.0
 	github.com/stretchr/objx v0.3.0 // indirect

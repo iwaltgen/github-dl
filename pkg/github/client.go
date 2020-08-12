@@ -20,15 +20,18 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 
-	ggithub "github.com/google/go-github/github"
+	"github.com/mholt/archiver/v3"
 	"github.com/reactivex/rxgo/v2"
 	"golang.org/x/oauth2"
+
+	ggithub "github.com/google/go-github/github"
 )
 
 // Client is a github oauth2 client.
@@ -79,6 +82,9 @@ func (c *Client) GetRelease(ctx context.Context,
 }
 
 // DownloadReleaseAsset downloads a release asset file.
+// first returns release asset info.
+// second returns download progress info or error info use a stream.
+// third returns initialize error info.
 func (c *Client) DownloadReleaseAsset(ctx context.Context,
 	repo Repository,
 	opt *AssetOptions,
@@ -105,9 +111,9 @@ func (c *Client) DownloadReleaseAsset(ctx context.Context,
 func (c *Client) findReleaseAsset(release *RepositoryRelease, opt *AssetOptions) *ReleaseAsset {
 	for _, asset := range release.Assets {
 		name := strings.ToLower(*asset.Name)
-		matchedName := strings.Contains(name, opt.Name)
-		matchedOS := strings.Contains(name, opt.OS)
-		matchedArch := strings.Contains(name, opt.Arch)
+		matchedName := strings.Contains(name, strings.ToLower(opt.Name))
+		matchedOS := strings.Contains(name, strings.ToLower(opt.OS))
+		matchedArch := strings.Contains(name, strings.ToLower(opt.Arch))
 		if matchedName && matchedOS && matchedArch {
 			return &asset
 		}
@@ -117,10 +123,6 @@ func (c *Client) findReleaseAsset(release *RepositoryRelease, opt *AssetOptions)
 
 func (c *Client) downloadAsset(asset *ReleaseAsset, opt *AssetOptions) (rxgo.Observable, error) {
 	url := *asset.BrowserDownloadURL
-	filename := path.Base(url)
-	filepath := filepath.Join(opt.DestPath, filename)
-	tempext := ".ghdownload"
-
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -129,7 +131,10 @@ func (c *Client) downloadAsset(asset *ReleaseAsset, opt *AssetOptions) (rxgo.Obs
 	return rxgo.Defer([]rxgo.Producer{func(ctx context.Context, next chan<- rxgo.Item) {
 		defer resp.Body.Close()
 
-		file, err := os.Create(filepath + tempext)
+		filename := path.Base(url)
+		destination := filepath.Join(opt.DestPath, filename)
+		tempext := ".ghdownload"
+		file, err := os.Create(destination + tempext)
 		if err != nil {
 			next <- rxgo.Error(err)
 			return
@@ -142,12 +147,80 @@ func (c *Client) downloadAsset(asset *ReleaseAsset, opt *AssetOptions) (rxgo.Obs
 			return
 		}
 
-		if err := os.Rename(filepath+tempext, filepath); err != nil {
+		if err := os.Rename(destination+tempext, destination); err != nil {
 			next <- rxgo.Error(err)
 		}
-	}}), nil
+		defer func() {
+			_ = os.Remove(destination + tempext)
+			_ = os.Remove(destination)
+		}()
 
-	// tempdir := os.TempDir()
-	// https://github.com/mholt/archiver
-	// return counter.Chan, nil
+		if !c.supportArchiveFile(filename) {
+			if opt.Target != "" {
+				newDestination := filepath.Join(opt.DestPath, opt.Target)
+				if err := os.Rename(destination, newDestination); err != nil {
+					next <- rxgo.Error(err)
+				}
+			}
+			return
+		}
+
+		if opt.PickFile != "" {
+			c.extractFile(next, destination, opt)
+			return
+		}
+
+		newDestination := filepath.Join(opt.DestPath, opt.Target)
+		if err := archiver.Unarchive(destination, newDestination); err != nil {
+			next <- rxgo.Error(err)
+			return
+		}
+	}}), nil
+}
+
+func (c *Client) extractFile(ch chan<- rxgo.Item, filename string, opt *AssetOptions) {
+	tempdir, err := ioutil.TempDir(os.TempDir(), "github-dl")
+	if err != nil {
+		ch <- rxgo.Error(err)
+		return
+	}
+	defer func() {
+		_ = os.RemoveAll(tempdir)
+	}()
+
+	if err := archiver.Extract(filename, opt.PickFile, tempdir); err != nil {
+		ch <- rxgo.Error(err)
+		return
+	}
+
+	pickTemppath := filepath.Join(tempdir, opt.PickFile, opt.PickFile)
+	pickFilepath := filepath.Join(opt.DestPath, opt.PickFile)
+	if err := os.MkdirAll(filepath.Dir(pickFilepath), os.ModePerm); err != nil {
+		ch <- rxgo.Error(err)
+		return
+	}
+	if err := os.Rename(pickTemppath, pickFilepath); err != nil {
+		ch <- rxgo.Error(err)
+		return
+	}
+
+	if opt.Target != "" {
+		newDestination := filepath.Join(opt.DestPath, opt.Target)
+		if err := os.Rename(pickFilepath, newDestination); err != nil {
+			ch <- rxgo.Error(err)
+		}
+		if filepath.Dir(opt.PickFile) != "." {
+			_ = os.RemoveAll(filepath.Dir(pickFilepath))
+		}
+	}
+}
+
+func (c *Client) supportArchiveFile(filename string) bool {
+	switch path.Ext(filename) {
+	case ".zip", ".gz", ".tgz", ".br", ".zst", ".lz4", ".xz", ".sz":
+		return true
+
+	default:
+		return false
+	}
 }
