@@ -137,7 +137,7 @@ func init() {
 	flagSet.StringVar(&osname, "os", runtime.GOOS, "os keyword")
 	flagSet.StringVar(&arch, "arch", runtime.GOARCH, "arch keyword")
 	flagSet.StringVar(&dest, "dest", wd, "destination path")
-	flagSet.StringVar(&target, "target", target, "destination file (optional)")
+	flagSet.StringVar(&target, "target", target, "rename destination file (optional)")
 	flagSet.StringVar(&pick, "pick", pick, "extract archive and pick a file (optional)")
 }
 
