@@ -3,6 +3,7 @@ module github.com/iwaltgen/github-dl
 go 1.14
 
 require (
+	github.com/Masterminds/semver v1.5.0
 	github.com/cenkalti/backoff/v4 v4.0.2 // indirect
 	github.com/cheggaaa/pb/v3 v3.0.5
 	github.com/fatih/color v1.9.0

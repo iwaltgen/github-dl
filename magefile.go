@@ -4,9 +4,13 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/Masterminds/semver"
+	"github.com/fatih/color"
 	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/sh"
 )
@@ -19,6 +23,8 @@ const (
 		" -X $PACKAGE/cmd.commitHash=$COMMIT_HASH" +
 		" -X $PACKAGE/cmd.buildDate=$BUILD_DATE"
 )
+
+type Version mg.Namespace
 
 var (
 	goexe = "go"
@@ -82,4 +88,62 @@ func (g goget) installModule(uri string) error {
 func existsFile(filepath string) bool {
 	_, err := os.Stat(filepath)
 	return !os.IsNotExist(err)
+}
+
+// Tag new current version tag
+func (v Version) Tag() error {
+	tag := "v" + version
+	if err := git("tag", "-a", tag, "-m", tag+" release"); err != nil {
+		return fmt.Errorf("add git tag error: %w", err)
+	}
+	return git("push", "origin", tag)
+}
+
+// Bump major version
+func (v Version) Major() error {
+	curVer, _ := semver.NewVersion(version)
+	nextVer := curVer.IncMajor()
+	return v.bumpVersion(version, nextVer.String())
+}
+
+// Bump minor version
+func (v Version) Minor() error {
+	curVer, _ := semver.NewVersion(version)
+	nextVer := curVer.IncMinor()
+	return v.bumpVersion(version, nextVer.String())
+}
+
+// Bump patch version
+func (v Version) Patch() error {
+	curVer, _ := semver.NewVersion(version)
+	nextVer := curVer.IncPatch()
+	return v.bumpVersion(version, nextVer.String())
+}
+
+func (v Version) bumpVersion(old, new string) error {
+	files := []string{"magefile.go"}
+	for _, file := range files {
+		if err := v.replaceFileText(file, old, new); err != nil {
+			return fmt.Errorf("bump version `%s` error: %w", file, err)
+		}
+	}
+
+	for _, file := range files {
+		if err := git("add", file); err != nil {
+			return fmt.Errorf("git add `%s` error: %w", file, err)
+		}
+	}
+
+	color.Green("new version: %s", new)
+	return git("commit", "-m", "chore: bump version")
+}
+
+func (Version) replaceFileText(path, old, new string) error {
+	read, err := ioutil.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read file error: %w", err)
+	}
+
+	newContents := strings.Replace(string(read), old, new, -1)
+	return ioutil.WriteFile(path, []byte(newContents), 0)
 }
