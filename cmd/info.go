@@ -52,10 +52,6 @@ github-dl --repo iwaltgen/github-dl info --tag v0.1.0`,
 	},
 }
 
-var (
-	tag = "latest"
-)
-
 func init() {
 	rootCmd.AddCommand(infoCmd)
 

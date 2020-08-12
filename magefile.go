@@ -90,7 +90,7 @@ func existsFile(filepath string) bool {
 	return !os.IsNotExist(err)
 }
 
-// Tag new current version tag
+// Tag creates tag (current version)
 func (v Version) Tag() error {
 	tag := "v" + version
 	if err := git("tag", "-a", tag, "-m", tag+" release"); err != nil {
@@ -99,21 +99,21 @@ func (v Version) Tag() error {
 	return git("push", "origin", tag)
 }
 
-// Bump major version
+// Major bump major version
 func (v Version) Major() error {
 	curVer, _ := semver.NewVersion(version)
 	nextVer := curVer.IncMajor()
 	return v.bumpVersion(version, nextVer.String())
 }
 
-// Bump minor version
+// Minor bump minor version
 func (v Version) Minor() error {
 	curVer, _ := semver.NewVersion(version)
 	nextVer := curVer.IncMinor()
 	return v.bumpVersion(version, nextVer.String())
 }
 
-// Bump patch version
+// Patch bump patch version
 func (v Version) Patch() error {
 	curVer, _ := semver.NewVersion(version)
 	nextVer := curVer.IncPatch()

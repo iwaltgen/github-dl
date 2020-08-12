@@ -77,14 +77,14 @@ type repoRelease struct {
 }
 
 var (
-	page    int
-	perPage int
+	page    = 1
+	perPage = 10
 )
 
 func init() {
 	rootCmd.AddCommand(listCmd)
 
 	flagSet := listCmd.Flags()
-	flagSet.IntVar(&page, "page", 1, "request page number")
-	flagSet.IntVar(&perPage, "per-page", 10, "request per page count")
+	flagSet.IntVar(&page, "page", page, "request page number")
+	flagSet.IntVar(&perPage, "per-page", perPage, "request per page count")
 }

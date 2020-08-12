@@ -24,9 +24,11 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/cheggaaa/pb/v3"
@@ -48,10 +50,10 @@ commit: %s
 build: %s
 
 Example:
-github-dl --repo iwaltgen/github-dl --asset github-dl
+github-dl --repo cli/cli --asset gh --dest bin --pick gh
+github-dl --repo golangci/golangci-lint --asset golangci-lint --pick golangci-lint
 github-dl --repo uber/prototool --asset prototool --target prototool
-github-dl --repo golangci/golangci-lint --asset golangci-lint --target golangci-lint --pick golangci-lint
-github-dl --repo google/protobuf --asset protoc --os osx --dest ./bin --target protoc --pick bin/protoc`,
+github-dl --repo google/protobuf --asset protoc --target protoc --pick protoc`,
 		version,
 		commitHash,
 		buildTime().Format(time.RFC3339),
@@ -62,48 +64,24 @@ github-dl --repo google/protobuf --asset protoc --os osx --dest ./bin --target p
 		ctx := context.Background()
 		client := github.NewClient(githubToken())
 
+		opt, err := makeAssetOptions()
+		if err != nil {
+			color.Magenta(err.Error())
+			fmt.Println(cmd.UsageString())
+			os.Exit(1)
+		}
+
 		if verbose {
 			color.Cyan("repository:\t%s", repo)
 			color.Cyan("release:\t%s", tag)
 		}
 
-		if asset == "" {
-			color.Magenta("require asset name: see flags --asset")
-			fmt.Println(cmd.UsageString())
-			os.Exit(1)
-		}
-
-		asset, observable, err := client.DownloadReleaseAsset(ctx, github.Repository(repo), &github.AssetOptions{
-			Name:     asset,
-			Tag:      tag,
-			OS:       osname,
-			Arch:     arch,
-			DestPath: dest,
-			Target:   target,
-			PickFile: pick,
-		})
+		asset, observable, err := client.DownloadReleaseAsset(ctx, github.Repository(repo), opt)
 		if err != nil {
 			return err
 		}
 
-		totalSize := int64(*asset.Size)
-		pbbar := pb.Full.New(int(totalSize))
-		pbbar.Set(pb.Bytes, true)
-		pbbar.Set(pb.Terminal, true)
-
-		pbbar.Start()
-		for item := range observable.Observe(rxgo.WithContext(ctx)) {
-			if item.Error() {
-				return item.E
-			}
-
-			progress := item.V.(*github.DownloadProgress)
-			pbbar.SetCurrent(progress.Received)
-		}
-		pbbar.SetCurrent(totalSize)
-		pbbar.Finish()
-
-		return nil
+		return showDownloadProgress(ctx, asset, observable)
 	},
 }
 
@@ -115,12 +93,15 @@ var (
 )
 
 var (
-	asset  string
-	osname string
-	arch   string
-	dest   string
-	target string
-	pick   string
+	asset     string
+	tag       = "latest"
+	osname    = runtime.GOOS
+	osAlias   = "darwin:macos,osx;windows:win"
+	arch      = runtime.GOARCH
+	archAlias = "amd64:x86_64"
+	dest, _   = os.Getwd()
+	target    string
+	pick      string
 )
 
 func init() {
@@ -131,14 +112,15 @@ func init() {
 	pflagSet.StringVar(&repo, "repo", repo, "github repository (owner/name)")
 
 	flagSet := rootCmd.Flags()
-	wd, _ := os.Getwd()
-	flagSet.StringVar(&tag, "tag", tag, "release tag")
 	flagSet.StringVar(&asset, "asset", asset, "asset name keyword")
-	flagSet.StringVar(&osname, "os", runtime.GOOS, "os keyword")
-	flagSet.StringVar(&arch, "arch", runtime.GOARCH, "arch keyword")
-	flagSet.StringVar(&dest, "dest", wd, "destination path")
+	flagSet.StringVar(&tag, "tag", tag, "release tag")
+	flagSet.StringVar(&osname, "os", osname, "os keyword")
+	flagSet.StringVar(&osAlias, "os-alias", osAlias, "os keyword alias")
+	flagSet.StringVar(&arch, "arch", arch, "arch keyword")
+	flagSet.StringVar(&archAlias, "arch-alias", archAlias, "arch keyword alias")
+	flagSet.StringVar(&dest, "dest", dest, "destination path")
 	flagSet.StringVar(&target, "target", target, "rename destination file (optional)")
-	flagSet.StringVar(&pick, "pick", pick, "extract archive and pick a file (optional)")
+	flagSet.StringVar(&pick, "pick", pick, "extract archive and pick a file name pattern (optional)")
 }
 
 func githubToken() string {
@@ -148,11 +130,68 @@ func githubToken() string {
 	return os.Getenv(tokenEnv)
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		color.Magenta(err.Error())
-		os.Exit(1)
+func makeAssetOptions() (*github.AssetOptions, error) {
+	if asset == "" {
+		return nil, errors.New("require asset name: see flags --asset")
 	}
+
+	osAliasMap, err := parseAlias(osAlias)
+	if err != nil {
+		return nil, errors.New("parse alias error: see flags --os-alias")
+	}
+
+	archAliasMap, err := parseAlias(archAlias)
+	if err != nil {
+		return nil, errors.New("parse alias error: see flags --arch-alias")
+	}
+
+	return &github.AssetOptions{
+		Name:        asset,
+		Tag:         tag,
+		OS:          osname,
+		OSAlias:     osAliasMap[osname],
+		Arch:        arch,
+		ArchAlias:   archAliasMap[arch],
+		DestPath:    dest,
+		Target:      target,
+		PickPattern: pick,
+	}, nil
+}
+
+func parseAlias(flagAlias string) (map[string][]string, error) {
+	ret := map[string][]string{}
+	aliases := strings.Split(flagAlias, ";")
+	for _, alias := range aliases {
+		kv := strings.Split(alias, ":")
+		if len(kv) != 2 {
+			return nil, fmt.Errorf("parse alias: %v", kv)
+		}
+		k, v := kv[0], strings.Split(kv[1], ",")
+		ret[k] = v
+	}
+	return ret, nil
+}
+
+func showDownloadProgress(ctx context.Context,
+	asset *github.ReleaseAsset,
+	observable rxgo.Observable,
+) error {
+	totalSize := int64(*asset.Size)
+	pbbar := pb.Full.New(int(totalSize))
+	pbbar.Set(pb.Bytes, true)
+	pbbar.Set(pb.Terminal, true)
+
+	pbbar.Start()
+	for item := range observable.Observe(rxgo.WithContext(ctx)) {
+		if item.Error() {
+			return item.E
+		}
+
+		progress := item.V.(*github.DownloadProgress)
+		pbbar.SetCurrent(progress.Received)
+	}
+	pbbar.SetCurrent(totalSize)
+	pbbar.Finish()
+
+	return nil
 }

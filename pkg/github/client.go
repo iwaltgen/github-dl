@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mattn/go-zglob"
 	"github.com/mholt/archiver/v3"
 	"github.com/reactivex/rxgo/v2"
 	"golang.org/x/oauth2"
@@ -112,8 +113,25 @@ func (c *Client) findReleaseAsset(release *RepositoryRelease, opt *AssetOptions)
 	for _, asset := range release.Assets {
 		name := strings.ToLower(*asset.Name)
 		matchedName := strings.Contains(name, strings.ToLower(opt.Name))
+
 		matchedOS := strings.Contains(name, strings.ToLower(opt.OS))
+		if !matchedOS {
+			for _, v := range opt.OSAlias {
+				if matchedOS = strings.Contains(name, v); matchedOS {
+					break
+				}
+			}
+		}
+
 		matchedArch := strings.Contains(name, strings.ToLower(opt.Arch))
+		if !matchedArch {
+			for _, v := range opt.ArchAlias {
+				if matchedArch = strings.Contains(name, v); matchedArch {
+					break
+				}
+			}
+		}
+
 		if matchedName && matchedOS && matchedArch {
 			return &asset
 		}
@@ -134,6 +152,11 @@ func (c *Client) downloadAsset(asset *ReleaseAsset, opt *AssetOptions) (rxgo.Obs
 		filename := path.Base(url)
 		destination := filepath.Join(opt.DestPath, filename)
 		tempext := ".ghdownload"
+
+		if err := os.MkdirAll(filepath.Dir(destination), os.ModePerm); err != nil {
+			next <- rxgo.Error(err)
+			return
+		}
 		file, err := os.Create(destination + tempext)
 		if err != nil {
 			next <- rxgo.Error(err)
@@ -165,7 +188,7 @@ func (c *Client) downloadAsset(asset *ReleaseAsset, opt *AssetOptions) (rxgo.Obs
 			return
 		}
 
-		if opt.PickFile != "" {
+		if opt.PickPattern != "" {
 			c.extractFile(next, destination, opt)
 			return
 		}
@@ -188,29 +211,37 @@ func (c *Client) extractFile(ch chan<- rxgo.Item, filename string, opt *AssetOpt
 		_ = os.RemoveAll(tempdir)
 	}()
 
-	if err := archiver.Extract(filename, opt.PickFile, tempdir); err != nil {
+	if err := archiver.Unarchive(filename, tempdir); err != nil {
 		ch <- rxgo.Error(err)
 		return
 	}
 
-	pickTemppath := filepath.Join(tempdir, opt.PickFile, opt.PickFile)
-	pickFilepath := filepath.Join(opt.DestPath, opt.PickFile)
-	if err := os.MkdirAll(filepath.Dir(pickFilepath), os.ModePerm); err != nil {
-		ch <- rxgo.Error(err)
-		return
-	}
-	if err := os.Rename(pickTemppath, pickFilepath); err != nil {
+	matches, err := zglob.Glob(filepath.Join(tempdir, "**", opt.PickPattern))
+	if err != nil {
 		ch <- rxgo.Error(err)
 		return
 	}
 
-	if opt.Target != "" {
-		newDestination := filepath.Join(opt.DestPath, opt.Target)
-		if err := os.Rename(pickFilepath, newDestination); err != nil {
-			ch <- rxgo.Error(err)
+	for i, path := range matches {
+		if opt.Target != "" {
+			suffix := ""
+			if i != 0 {
+				suffix = fmt.Sprintf(".%d", i)
+			}
+
+			destination := filepath.Join(opt.DestPath, opt.Target+suffix)
+			if err := os.Rename(path, destination); err != nil {
+				ch <- rxgo.Error(err)
+				return
+			}
+			continue
 		}
-		if filepath.Dir(opt.PickFile) != "." {
-			_ = os.RemoveAll(filepath.Dir(pickFilepath))
+
+		filename := filepath.Base(path)
+		destination := filepath.Join(opt.DestPath, filename)
+		if err := os.Rename(path, destination); err != nil {
+			ch <- rxgo.Error(err)
+			return
 		}
 	}
 }
