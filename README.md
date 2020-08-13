@@ -1,6 +1,6 @@
-# github-dl
+# GitHub-DL
 
-download assets from github release
+`github-dl` downloads, search from GitHub release.
 
 ## Installation
 
