@@ -49,5 +49,5 @@ changelog:
   sort: asc
   filters:
     exclude:
-    # - '^docs:'
-    # - '^chore:'
+    - '^docs:'
+    - '^chore:'
