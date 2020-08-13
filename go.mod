@@ -18,4 +18,4 @@ require (
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 )
 
-replace github.com/pierrec/lz4@v2.0.5 => github.com/pierrec/lz4/v3 v3.3.2
+replace github.com/pierrec/lz4/v3 => github.com/pierrec/lz4/v3 v3.3.2
