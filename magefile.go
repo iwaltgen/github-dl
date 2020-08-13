@@ -17,7 +17,7 @@ import (
 
 const (
 	packageName = "github.com/iwaltgen/github-dl"
-	version     = "0.1.0"
+	version     = "0.1.1"
 	ldflags     = "-ldflags=-s -w"
 )
 
