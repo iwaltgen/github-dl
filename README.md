@@ -1,5 +1,7 @@
 # GitHub-DL
 
+![build](https://github.com/iwaltgen/github-dl/workflows/build/badge.svg)
+
 `github-dl` downloads, search from GitHub release.
 
 ## Installation
