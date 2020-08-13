@@ -12,6 +12,7 @@
 *.out
 bin/*
 build/*
+dist/*
 !mage
 
 # Dependency directories (remove the comment below to include it)

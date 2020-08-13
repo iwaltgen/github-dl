@@ -59,8 +59,9 @@ func Build() error {
 }
 
 // Clean clean build artifacts
-func Clean() error {
-	return sh.Rm("build")
+func Clean() {
+	sh.Rm("build")
+	sh.Rm("dist")
 }
 
 // Test test app
@@ -88,6 +89,12 @@ func (g goget) installModule(uri string) error {
 func existsFile(filepath string) bool {
 	_, err := os.Stat(filepath)
 	return !os.IsNotExist(err)
+}
+
+// Release creates release (current version)
+func (v Version) Release() error {
+	mg.Deps(v.Tag)
+	return sh.RunWith(buildEnv(), "goreleaser", "--rm-dist")
 }
 
 // Tag creates tag (current version)
