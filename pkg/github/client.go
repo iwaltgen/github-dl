@@ -28,7 +28,7 @@ import (
 	"strings"
 
 	"github.com/mattn/go-zglob"
-	"github.com/mholt/archiver"
+	"github.com/mholt/archiver/v3"
 	"github.com/reactivex/rxgo/v2"
 	"golang.org/x/oauth2"
 
