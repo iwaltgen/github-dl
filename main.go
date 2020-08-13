@@ -21,10 +21,7 @@ THE SOFTWARE.
 */
 package main
 
-import (
-	"github.com/iwaltgen/github-dl/cmd"
-	_ "github.com/pierrec/lz4/v3"
-)
+import "github.com/iwaltgen/github-dl/cmd"
 
 func main() {
 	cmd.Execute()

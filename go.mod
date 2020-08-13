@@ -12,10 +12,7 @@ require (
 	github.com/magefile/mage v1.10.0
 	github.com/mattn/go-zglob v0.0.3
 	github.com/mholt/archiver/v3 v3.3.0
-	github.com/pierrec/lz4/v3 v3.3.2
 	github.com/reactivex/rxgo/v2 v2.1.0
 	github.com/spf13/cobra v1.0.0
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 )
-
-replace github.com/pierrec/lz4/v3 => github.com/pierrec/lz4/v3 v3.3.2
