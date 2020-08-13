@@ -13,9 +13,6 @@ builds:
   - -trimpath
   ldflags:
   - -s -w
-  - -X github.com/iwaltgen/github-dl/cmd.version={{.Env.VERSION}}
-  - -X github.com/iwaltgen/github-dl/cmd.commitHash={{.Env.COMMIT_HASH}}
-  - -X github.com/iwaltgen/github-dl/cmd.buildDate={{.Env.BUILD_DATE}}
   goos:
   - linux
   - windows
@@ -28,9 +25,6 @@ builds:
   - -trimpath
   ldflags:
   - -s -w
-  - -X github.com/iwaltgen/github-dl/cmd.version={{.Env.VERSION}}
-  - -X github.com/iwaltgen/github-dl/cmd.commitHash={{.Env.COMMIT_HASH}}
-  - -X github.com/iwaltgen/github-dl/cmd.buildDate={{.Env.BUILD_DATE}}
   goos:
   - darwin
   goarch:

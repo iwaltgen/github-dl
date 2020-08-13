@@ -17,34 +17,21 @@ limitations under the License.
 package cmd
 
 import (
-	"fmt"
 	"strconv"
 	"time"
 )
 
 var (
-	version    = "dev"
-	commitHash = "dev"
-	buildDate  = ""
-	startTime  time.Time
+	version    = "v0.1.0"
+	commitHash = "b3443797f044001540968636faa47e2302605121"
+	modifiedAt = "1597299830"
 )
 
-func init() {
-	startTime = time.Now()
+func lastModified() time.Time {
+	return unixStringToTime(modifiedAt)
 }
 
-func buildTime() time.Time {
-	buildTime, err := unixStringToTime(buildDate)
-	if err != nil {
-		return startTime
-	}
-	return buildTime
-}
-
-func unixStringToTime(unixStr string) (t time.Time, err error) {
-	i, err := strconv.ParseInt(unixStr, 10, 64)
-	if err != nil {
-		return t, fmt.Errorf("parse unix timestamp string: %w", err)
-	}
-	return time.Unix(i, 0).UTC(), nil
+func unixStringToTime(unixStr string) time.Time {
+	i, _ := strconv.ParseInt(unixStr, 10, 64)
+	return time.Unix(i, 0).UTC()
 }

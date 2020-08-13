@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strings"
+	"regexp"
 	"time"
 
 	"github.com/Masterminds/semver"
@@ -18,10 +18,7 @@ import (
 const (
 	packageName = "github.com/iwaltgen/github-dl"
 	version     = "0.1.0"
-	ldflags     = "-ldflags=-s -w" +
-		" -X $PACKAGE/cmd.version=$VERSION" +
-		" -X $PACKAGE/cmd.commitHash=$COMMIT_HASH" +
-		" -X $PACKAGE/cmd.buildDate=$BUILD_DATE"
+	ldflags     = "-ldflags=-s -w"
 )
 
 type Version mg.Namespace
@@ -79,13 +76,6 @@ func All() {
 	mg.Deps(Clean, Lint, Test, Build)
 }
 
-type goget struct{}
-
-func (g goget) installModule(uri string) error {
-	env := map[string]string{"GO111MODULE": "off"}
-	return sh.RunWith(env, goexe, "get", uri)
-}
-
 func existsFile(filepath string) bool {
 	_, err := os.Stat(filepath)
 	return !os.IsNotExist(err)
@@ -110,28 +100,39 @@ func (v Version) Tag() error {
 func (v Version) Major() error {
 	curVer, _ := semver.NewVersion(version)
 	nextVer := curVer.IncMajor()
-	return v.bumpVersion(version, nextVer.String())
+	return v.bumpVersion(nextVer.String())
 }
 
 // Minor bump minor version
 func (v Version) Minor() error {
 	curVer, _ := semver.NewVersion(version)
 	nextVer := curVer.IncMinor()
-	return v.bumpVersion(version, nextVer.String())
+	return v.bumpVersion(nextVer.String())
 }
 
 // Patch bump patch version
 func (v Version) Patch() error {
 	curVer, _ := semver.NewVersion(version)
 	nextVer := curVer.IncPatch()
-	return v.bumpVersion(version, nextVer.String())
+	return v.bumpVersion(nextVer.String())
 }
 
-func (v Version) bumpVersion(old, new string) error {
-	files := []string{"magefile.go"}
+func (v Version) bumpVersion(version string) error {
+	files := []string{"magefile.go", "cmd/version.go"}
+
+	hash, _ := sh.Output("git", "rev-parse", "--verify", "HEAD")
+	kv := map[*regexp.Regexp]string{
+		regexp.MustCompile(`version\s+= \"([0-9]+)\.([0-9]+)\.([0-9]+)\"`): fmt.Sprintf(`version = "%s"`, version),
+		regexp.MustCompile(`commitHash\s= \"[a-z0-9]+\"`):                  fmt.Sprintf(`commitHash = "%s"`, hash),
+		regexp.MustCompile(`modifiedAt\s= \"[0-9]+\"`):                     fmt.Sprintf(`modifiedAt = "%d"`, time.Now().Unix()),
+	}
+
 	for _, file := range files {
-		if err := v.replaceFileText(file, old, new); err != nil {
-			return fmt.Errorf("bump version `%s` error: %w", file, err)
+		if err := v.replaceFileText(file, kv); err != nil {
+			return fmt.Errorf("bump version replace `%s` error: %w", file, err)
+		}
+		if err := sh.Run(goexe, "fmt", file); err != nil {
+			return fmt.Errorf("bump version fmt `%s` error: %w", file, err)
 		}
 	}
 
@@ -141,16 +142,19 @@ func (v Version) bumpVersion(old, new string) error {
 		}
 	}
 
-	color.Green("new version: %s", new)
+	color.Green("new version: %s", version)
 	return git("commit", "-m", "chore: bump version")
 }
 
-func (Version) replaceFileText(path, old, new string) error {
+func (Version) replaceFileText(path string, kv map[*regexp.Regexp]string) error {
 	read, err := ioutil.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("read file error: %w", err)
 	}
 
-	newContents := strings.Replace(string(read), old, new, -1)
-	return ioutil.WriteFile(path, []byte(newContents), 0)
+	contents := string(read)
+	for k, v := range kv {
+		contents = k.ReplaceAllString(contents, v)
+	}
+	return ioutil.WriteFile(path, []byte(contents), 0)
 }

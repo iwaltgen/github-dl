@@ -46,8 +46,8 @@ var rootCmd = &cobra.Command{
 	Long: fmt.Sprintf(`Download a github repository release asset.
 
 version: %s
-commit: %s
-build: %s
+commit-hash: %s
+last-modified: %s
 
 Example:
 github-dl --repo cli/cli --asset gh --dest bin --pick gh
@@ -56,7 +56,7 @@ github-dl --repo uber/prototool --asset prototool --target prototool
 github-dl --repo google/protobuf --asset protoc --target protoc --pick protoc`,
 		version,
 		commitHash,
-		buildTime().Format(time.RFC3339),
+		lastModified().Format(time.RFC3339),
 	),
 	SilenceErrors: true,
 	SilenceUsage:  true,
