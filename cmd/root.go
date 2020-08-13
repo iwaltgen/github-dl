@@ -73,7 +73,7 @@ github-dl --repo google/protobuf --asset protoc --target protoc --pick protoc`,
 
 		if verbose {
 			color.Cyan("repository:\t%s", repo)
-			color.Cyan("release:\t%s", tag)
+			color.Cyan("release tag:\t%s", tag)
 		}
 
 		asset, observable, err := client.DownloadReleaseAsset(ctx, github.Repository(repo), opt)
@@ -176,10 +176,14 @@ func showDownloadProgress(ctx context.Context,
 	asset *github.ReleaseAsset,
 	observable rxgo.Observable,
 ) error {
-	totalSize := int64(*asset.Size)
+	totalSize := int64(asset.GetSize())
 	pbbar := pb.Full.New(int(totalSize))
 	pbbar.Set(pb.Bytes, true)
 	pbbar.Set(pb.Terminal, true)
+
+	if verbose {
+		color.Cyan("release asset:\t%s(%s)", asset.GetName(), pbbar.Format(totalSize))
+	}
 
 	pbbar.Start()
 	for item := range observable.Observe(rxgo.WithContext(ctx)) {

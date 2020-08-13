@@ -16,9 +16,8 @@ import (
 )
 
 const (
-	packageName = "github.com/iwaltgen/github-dl"
-	version     = "0.1.1"
-	ldflags     = "-ldflags=-s -w"
+	version = "0.1.0"
+	ldflags = "-ldflags=-s -w"
 )
 
 type Version mg.Namespace
@@ -26,33 +25,18 @@ type Version mg.Namespace
 var (
 	goexe = "go"
 	git   = sh.RunCmd("git")
-
-	workspace = packageName
-	started   = time.Now().Unix()
 )
 
 func init() {
 	goexe = mg.GoCmd()
-	workspace, _ = os.Getwd()
-}
-
-func buildEnv() map[string]string {
-	hash, _ := sh.Output("git", "rev-parse", "--verify", "HEAD")
-	return map[string]string{
-		"PACKAGE":     packageName,
-		"WORKSPACE":   workspace,
-		"VERSION":     version,
-		"COMMIT_HASH": hash,
-		"BUILD_DATE":  fmt.Sprintf("%d", started),
-	}
 }
 
 // Build build app
 func Build() error {
 	mg.Deps(Lint)
 
-	args := []string{"build", "-trimpath", ldflags, "-o", "./build/github-dl"}
-	return sh.RunWith(buildEnv(), goexe, args...)
+	args := []string{"build", "-trimpath", "-ldflags", "-s -w", "-o", "./build/github-dl"}
+	return sh.RunV(goexe, args...)
 }
 
 // Clean clean build artifacts
@@ -84,7 +68,7 @@ func existsFile(filepath string) bool {
 // Release creates release (current version)
 func (v Version) Release() error {
 	mg.Deps(v.Tag)
-	return sh.RunWith(buildEnv(), "goreleaser", "--rm-dist")
+	return sh.RunV("goreleaser", "--rm-dist")
 }
 
 // Tag creates tag (current version)

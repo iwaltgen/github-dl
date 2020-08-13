@@ -45,7 +45,7 @@ github-dl --repo iwaltgen/github-dl info --tag v0.1.0`,
 
 		if verbose {
 			color.Cyan("repository:\t%s", repo)
-			color.Cyan("release:\t%s", tag)
+			color.Cyan("release tag:\t%s", tag)
 		}
 
 		return printPrettyJSON(Cyan, resp)

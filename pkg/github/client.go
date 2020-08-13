@@ -28,7 +28,7 @@ import (
 	"strings"
 
 	"github.com/mattn/go-zglob"
-	"github.com/mholt/archiver/v3"
+	"github.com/mholt/archiver"
 	"github.com/reactivex/rxgo/v2"
 	"golang.org/x/oauth2"
 
@@ -111,7 +111,7 @@ func (c *Client) DownloadReleaseAsset(ctx context.Context,
 
 func (c *Client) findReleaseAsset(release *RepositoryRelease, opt *AssetOptions) *ReleaseAsset {
 	for _, asset := range release.Assets {
-		name := strings.ToLower(*asset.Name)
+		name := strings.ToLower(asset.GetName())
 		matchedName := strings.Contains(name, strings.ToLower(opt.Name))
 
 		matchedOS := strings.Contains(name, strings.ToLower(opt.OS))
@@ -133,14 +133,15 @@ func (c *Client) findReleaseAsset(release *RepositoryRelease, opt *AssetOptions)
 		}
 
 		if matchedName && matchedOS && matchedArch {
-			return &asset
+			ret := asset
+			return &ret
 		}
 	}
 	return nil
 }
 
 func (c *Client) downloadAsset(asset *ReleaseAsset, opt *AssetOptions) (rxgo.Observable, error) {
-	url := *asset.BrowserDownloadURL
+	url := asset.GetBrowserDownloadURL()
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -164,7 +165,7 @@ func (c *Client) downloadAsset(asset *ReleaseAsset, opt *AssetOptions) (rxgo.Obs
 		}
 		defer file.Close()
 
-		counter := NewWriteCounter(next, int64(*asset.Size))
+		counter := NewWriteCounter(next, int64(asset.GetSize()))
 		if _, err = io.Copy(file, io.TeeReader(resp.Body, counter)); err != nil {
 			next <- rxgo.Error(err)
 			return

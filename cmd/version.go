@@ -22,7 +22,7 @@ import (
 )
 
 var (
-	version    = "0.1.1"
+	version    = "0.1.0"
 	commitHash = "7db27e2e431e0320164a62fed7b609788ed48ecb"
 	modifiedAt = "1597300987"
 )
