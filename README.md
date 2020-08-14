@@ -20,7 +20,7 @@ You can create a token [here](https://github.com/settings/tokens) for GitHub.
 ```sh
 export GITHUB_TOKEN="YOUR_GH_TOKEN"
 
-github-dl --repo iwaltgen/github-dl [--tag, --asset, --os, --arch, --dest, --target, --pick]
+github-dl --repo iwaltgen/github-dl [--tag, --asset, --dest, --target, --pick]
 github-dl --repo iwaltgen/github-dl list [--page, --per-page]
 github-dl --repo iwaltgen/github-dl info [--tag]
 
