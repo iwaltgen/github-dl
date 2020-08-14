@@ -28,7 +28,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	ggithub "github.com/google/go-github/github"
+	ggithub "github.com/google/go-github/v32/github"
 	"github.com/mattn/go-zglob"
 	"github.com/reactivex/rxgo/v2"
 	"golang.org/x/oauth2"
@@ -136,8 +136,7 @@ func (c *Client) findReleaseAsset(release *RepositoryRelease, opt *AssetOptions)
 		}
 
 		if matchedName && matchedOS && matchedArch {
-			ret := asset
-			return &ret
+			return asset
 		}
 	}
 	return nil

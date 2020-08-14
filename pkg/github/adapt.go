@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	ggithub "github.com/google/go-github/github"
+	ggithub "github.com/google/go-github/v32/github"
 )
 
 // Repository is github repository. (owner/name)
