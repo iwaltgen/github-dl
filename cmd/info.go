@@ -36,7 +36,7 @@ github-dl --repo iwaltgen/github-dl info
 github-dl --repo iwaltgen/github-dl info --tag v0.1.0`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
-		client := github.NewClient(githubToken())
+		client := github.NewClient(githubToken(), verbose)
 
 		resp, err := client.GetRelease(ctx, github.Repository(repo), tag)
 		if err != nil {

@@ -27,27 +27,30 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fatih/color"
+	ggithub "github.com/google/go-github/github"
 	"github.com/mattn/go-zglob"
-	"github.com/mholt/archiver/v3"
 	"github.com/reactivex/rxgo/v2"
 	"golang.org/x/oauth2"
 
-	ggithub "github.com/google/go-github/github"
+	"github.com/iwaltgen/github-dl/pkg/archive"
 )
 
 // Client is a github oauth2 client.
 type Client struct {
-	client *ggithub.Client
+	client  *ggithub.Client
+	verbose bool
 }
 
 // NewClient creates github client.
-func NewClient(accessToken string) *Client {
+func NewClient(accessToken string, verbose bool) *Client {
 	ctx := context.Background()
 	tokenSource := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: accessToken},
 	)
 	return &Client{
-		client: ggithub.NewClient(oauth2.NewClient(ctx, tokenSource)),
+		client:  ggithub.NewClient(oauth2.NewClient(ctx, tokenSource)),
+		verbose: verbose,
 	}
 }
 
@@ -142,6 +145,10 @@ func (c *Client) findReleaseAsset(release *RepositoryRelease, opt *AssetOptions)
 
 func (c *Client) downloadAsset(asset *ReleaseAsset, opt *AssetOptions) (rxgo.Observable, error) {
 	url := asset.GetBrowserDownloadURL()
+	if c.verbose {
+		color.Cyan("release dl url:\t%s", url)
+	}
+
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -179,7 +186,7 @@ func (c *Client) downloadAsset(asset *ReleaseAsset, opt *AssetOptions) (rxgo.Obs
 			_ = os.Remove(destination)
 		}()
 
-		if !c.supportArchiveFile(filename) {
+		if !archive.Support(filename) {
 			if opt.Target != "" {
 				newDestination := filepath.Join(opt.DestPath, opt.Target)
 				if err := os.Rename(destination, newDestination); err != nil {
@@ -195,14 +202,14 @@ func (c *Client) downloadAsset(asset *ReleaseAsset, opt *AssetOptions) (rxgo.Obs
 		}
 
 		newDestination := filepath.Join(opt.DestPath, opt.Target)
-		if err := archiver.Unarchive(destination, newDestination); err != nil {
+		if err := archive.Unarchive(destination, newDestination); err != nil {
 			next <- rxgo.Error(err)
 			return
 		}
 	}}), nil
 }
 
-func (c *Client) extractFile(ch chan<- rxgo.Item, filename string, opt *AssetOptions) {
+func (c *Client) extractFile(ch chan<- rxgo.Item, source string, opt *AssetOptions) {
 	tempdir, err := ioutil.TempDir(os.TempDir(), "github-dl")
 	if err != nil {
 		ch <- rxgo.Error(err)
@@ -212,7 +219,7 @@ func (c *Client) extractFile(ch chan<- rxgo.Item, filename string, opt *AssetOpt
 		_ = os.RemoveAll(tempdir)
 	}()
 
-	if err := archiver.Unarchive(filename, tempdir); err != nil {
+	if err := archive.Unarchive(source, tempdir); err != nil {
 		ch <- rxgo.Error(err)
 		return
 	}
@@ -221,6 +228,10 @@ func (c *Client) extractFile(ch chan<- rxgo.Item, filename string, opt *AssetOpt
 	if err != nil {
 		ch <- rxgo.Error(err)
 		return
+	}
+
+	if c.verbose {
+		color.Cyan("pick matches:\t%v", strings.Join(matches, "\n\t\t"))
 	}
 
 	for i, path := range matches {
@@ -244,15 +255,5 @@ func (c *Client) extractFile(ch chan<- rxgo.Item, filename string, opt *AssetOpt
 			ch <- rxgo.Error(err)
 			return
 		}
-	}
-}
-
-func (c *Client) supportArchiveFile(filename string) bool {
-	switch path.Ext(filename) {
-	case ".zip", ".gz", ".tgz", ".br", ".zst", ".lz4", ".xz", ".sz":
-		return true
-
-	default:
-		return false
 	}
 }

@@ -62,7 +62,7 @@ github-dl --repo google/protobuf --asset protoc --target protoc --pick protoc`,
 	SilenceUsage:  true,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
-		client := github.NewClient(githubToken())
+		client := github.NewClient(githubToken(), verbose)
 
 		opt, err := makeAssetOptions()
 		if err != nil {
@@ -182,7 +182,7 @@ func showDownloadProgress(ctx context.Context,
 	pbbar.Set(pb.Terminal, true)
 
 	if verbose {
-		color.Cyan("release asset:\t%s(%s)", asset.GetName(), pbbar.Format(totalSize))
+		color.Cyan("release asset:\t%s (%s)", asset.GetName(), pbbar.Format(totalSize))
 	}
 
 	pbbar.Start()

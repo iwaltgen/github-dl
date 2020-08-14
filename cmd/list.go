@@ -36,7 +36,7 @@ github-dl --repo iwaltgen/github-dl list
 github-dl --repo iwaltgen/github-dl list --page 1 --per-page 10`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctx := context.Background()
-		client := github.NewClient(githubToken())
+		client := github.NewClient(githubToken(), verbose)
 		opt := &github.ListOptions{
 			Page:    page,
 			PerPage: perPage,
