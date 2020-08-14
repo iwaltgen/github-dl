@@ -1,6 +1,7 @@
 # GitHub-DL
 
 ![build](https://github.com/iwaltgen/github-dl/workflows/build/badge.svg)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/iwaltgen/github-dl)](https://pkg.go.dev/github.com/iwaltgen/github-dl)
 
 `github-dl` downloads, search from GitHub release.
 
