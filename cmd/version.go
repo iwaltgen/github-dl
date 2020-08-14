@@ -22,9 +22,9 @@ import (
 )
 
 var (
-	version    = "0.2.0"
-	commitHash = "2d73ddc283d07a1c66c75046623b1030b2e40820"
-	modifiedAt = "1597400098"
+	version    = "0.2.1"
+	commitHash = "49cd5f9cf98d60c08813e8e75b7b95b2cff4ebb9"
+	modifiedAt = "1597406672"
 )
 
 func lastModified() time.Time {
