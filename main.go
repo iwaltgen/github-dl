@@ -19,6 +19,8 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
+
+// Command github-dl is an github release assets downloader.
 package main // import "github.com/iwaltgen/github-dl"
 
 import "github.com/iwaltgen/github-dl/cmd"
