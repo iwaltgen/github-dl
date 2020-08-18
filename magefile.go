@@ -17,7 +17,6 @@ import (
 
 const (
 	version = "0.2.1"
-	ldflags = "-ldflags=-s -w"
 )
 
 type Version mg.Namespace
