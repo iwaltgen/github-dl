@@ -14,6 +14,7 @@ bin/*
 build/*
 dist/*
 !mage
+!upx.sh
 
 # Dependency directories (remove the comment below to include it)
 # vendor/

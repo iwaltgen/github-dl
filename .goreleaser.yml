@@ -28,7 +28,7 @@ builds:
   goarch:
   - amd64
   hooks:
-    post: gon .gon.hcl
+    post: bin/upx.sh && gon .gon.hcl
 
 archives:
 - replacements:
