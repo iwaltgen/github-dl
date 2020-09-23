@@ -24,6 +24,7 @@ export GITHUB_TOKEN="YOUR_GH_TOKEN"
 github-dl --repo iwaltgen/github-dl [--tag, --asset, --dest, --target, --pick]
 github-dl --repo iwaltgen/github-dl list [--page, --per-page]
 github-dl --repo iwaltgen/github-dl info [--tag]
+github-dl --repo iwaltgen/github-dl --asset github-dl --pick github-dl
 
 github-dl help
 github-dl help info
