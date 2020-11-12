@@ -8,7 +8,7 @@
 ## Installation
 
 ```sh
-go get -u github.com/iwaltgen/github-dl
+go install github.com/iwaltgen/github-dl
 ```
 Or download binaries from the [releases](https://github.com/iwaltgen/github-dl/releases) page.
 
